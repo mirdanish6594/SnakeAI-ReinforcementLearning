@@ -8,7 +8,7 @@ This project implements an AI agent that learns to play Snake using Q-learning. 
 
 ### Prerequisites
 
-- Python 3.x
+- Python 
 - Pygame
 - PyTorch
 - Matplotlib
