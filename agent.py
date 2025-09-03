@@ -97,18 +97,18 @@ class Agent:
 
     def get_action(self, state):
         # random moves: tradeoff exploration / exploitation
-        self.epsilon = 80 - self.n_games
+        # New formula: Epsilon will decrease but never go below 5%
+        self.epsilon = max(0.05, 0.5 - self.n_games / 150)
+        
         final_move = [0,0,0]
-        # if block is for exploration and else block is for exploitation
-        if random.randint(0, 200) < self.epsilon:
-            move = random.randint(0, 2) # 0, 1, 2 represent the 3 actions
-            final_move[move] = 1 # it sets the random action to 1, indicating that the action is chosen
+        # Use a float for the random check now
+        if random.uniform(0, 1) < self.epsilon:
+            move = random.randint(0, 2)
+            final_move[move] = 1
         else:
             state0 = torch.tensor(state, dtype=torch.float)
-            prediction = self.model(state0) # uses the neural network model to predict the Q-values for all 
-            # available actions in the current state.
-            move = torch.argmax(prediction).item() # identifies the action with the highest predicted Q-value
-            # and returns its index.
+            prediction = self.model(state0)
+            move = torch.argmax(prediction).item()
             final_move[move] = 1
 
         return final_move

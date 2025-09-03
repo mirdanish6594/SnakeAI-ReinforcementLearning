@@ -5,7 +5,7 @@ from collections import namedtuple
 import numpy as np
 
 pygame.init()
-font = pygame.font.Font('arcade.ttf', 25) # font-style and size
+font = pygame.font.Font('arcade.ttf', 25)
 
 class Direction(Enum):
     RIGHT = 1
@@ -15,7 +15,7 @@ class Direction(Enum):
 
 Point = namedtuple('Point', 'x, y')
 
-# rgb colors
+# RGB colors
 WHITE = (255, 255, 255)
 BLUE = (26, 47, 237)
 GREEN1 = (11, 87, 3)
@@ -30,53 +30,78 @@ class SnakeGameAI:
     def __init__(self, w=640, h=480):
         self.w = w
         self.h = h
-        # init display
-        self.display = pygame.display.set_mode((self.w, self.h)) # dimension of the game window
+        # Init display
+        self.display = pygame.display.set_mode((self.w, self.h))
         pygame.display.set_caption('Snake')
         self.clock = pygame.time.Clock()
         self.reset()
 
     def reset(self):
-        # init game state
+        # Init game state
         self.direction = Direction.RIGHT
-
-        self.head = Point(self.w / 2, self.h / 2) # makes the initial position to be at the center of the window
+        self.head = Point(self.w / 2, self.h / 2)
         self.snake = [self.head,
                       Point(self.head.x - BLOCK_SIZE, self.head.y),
                       Point(self.head.x - (2 * BLOCK_SIZE), self.head.y)]
-
         self.score = 0
         self.food = None
         self._place_food()
         self.frame_iteration = 0
 
     def _place_food(self):
-        x = random.randint(0, (self.w - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE # random x-coordinate is generated
-        y = random.randint(0, (self.h - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE # random y-coordinate is generated
+        x = random.randint(0, (self.w - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE
+        y = random.randint(0, (self.h - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE
         self.food = Point(x, y)
         if self.food in self.snake:
-            self._place_food() # recursively calls itself if food randomly comes under the body of the snake
+            self._place_food()
 
     def play_step(self, action):
-        # collect user input
+        # 1. Collect user input
         self.frame_iteration += 1
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                return True  # When user closes the window
+                pygame.quit()
+                quit()
 
-        # move
-        self._move(action)  # update the head
+        # 2. Store distance to food before moving
+        old_dist = np.sqrt((self.head.x - self.food.x)**2 + (self.head.y - self.food.y)**2)
+
+        # 3. Move the snake
+        self._move(action)
         self.snake.insert(0, self.head)
+        
+        # 4. Store distance to food after moving
+        new_dist = np.sqrt((self.head.x - self.food.x)**2 + (self.head.y - self.food.y)**2)
 
-        # check if game over
-        reward = 0
+        # 5. Initialize game state and apply reward shaping
         game_over = False
-        if self.is_collision() or self.frame_iteration > 100*len(self.snake):
+        
+        # --- REWARD SHAPING ---
+        # Give a small reward for getting closer to the food, and a small penalty for moving away
+        if new_dist < old_dist:
+            reward = 0.1
+        else:
+            reward = -0.1
+            
+        # --- CHECK FOR GAME OVER CONDITIONS ---
+        # These large penalties will override the small shaping reward on the final step
+        if self.head in self.snake[1:]:
             game_over = True
-            reward = -10
-            return reward, game_over, self.score  # Game over
+            reward = -20  # Higher penalty for self-collision
+            return reward, game_over, self.score
 
-        # place new food or just move
+        if self.head.x > self.w - BLOCK_SIZE or self.head.x < 0 or self.head.y > self.h - BLOCK_SIZE or self.head.y < 0:
+            game_over = True
+            reward = -10 # Penalty for hitting a wall
+            return reward, game_over, self.score
+        
+        if self.frame_iteration > 100 * len(self.snake):
+            game_over = True
+            reward = -10 # Penalty for being idle/looping for too long
+            return reward, game_over, self.score
+
+        # --- CHECK FOR FOOD ---
+        # This large reward will override the small shaping reward
         if self.head == self.food:
             self.score += 1
             reward = 10
@@ -84,36 +109,32 @@ class SnakeGameAI:
         else:
             self.snake.pop()
 
-        # update ui and clock
+        # 7. Update UI and clock
         self._update_ui()
         self.clock.tick(SPEED)
 
-        # continue the game
+        # 8. Return current game state
         return reward, game_over, self.score
 
     def is_collision(self, pt=None):
         if pt is None:
             pt = self.head
-        # hits boundary
+        # Hits boundary
         if pt.x > self.w - BLOCK_SIZE or pt.x < 0 or pt.y > self.h - BLOCK_SIZE or pt.y < 0:
             return True
-        # hits itself
+        # Hits itself
         if pt in self.snake[1:]:
             return True
-
         return False
 
     def _update_ui(self):
         self.display.fill(BLACK)
-
         for pt in self.snake:
             pygame.draw.rect(self.display, GREEN1, pygame.Rect(pt.x, pt.y, BLOCK_SIZE, BLOCK_SIZE))
             pygame.draw.rect(self.display, GREEN2, pygame.Rect(pt.x + 4, pt.y + 4, 12, 12))
-
         pygame.draw.rect(self.display, BLUE, pygame.Rect(self.food.x, self.food.y, BLOCK_SIZE, BLOCK_SIZE))
-
-        text = font.render("Score: " + str(self.score), True, WHITE) # the argument true is for smoothening
-        self.display.blit(text, [0, 0])  # draw text at the top left corner
+        text = font.render("Score: " + str(self.score), True, WHITE)
+        self.display.blit(text, [0, 0])
         pygame.display.flip()
 
     def _move(self, action):
@@ -122,16 +143,14 @@ class SnakeGameAI:
         idx = clock_wise.index(self.direction)
 
         if np.array_equal(action, [1, 0, 0]):
-            new_dir = clock_wise[idx] # no changes
+            new_dir = clock_wise[idx] # No change
         elif np.array_equal(action, [0, 1, 0]):
-            next_idx = (idx + 1)%4
-            new_dir = clock_wise[next_idx] # right turn r-> d-> l-> u->
+            next_idx = (idx + 1) % 4
+            new_dir = clock_wise[next_idx] # Right turn
         else: # [0, 0, 1]
-            next_idx = (idx - 1)%4
-            new_dir = clock_wise[next_idx] # left turn r-> u-> l-> d->
-
+            next_idx = (idx - 1) % 4
+            new_dir = clock_wise[next_idx] # Left turn
         self.direction = new_dir
-
 
         x = self.head.x
         y = self.head.y
@@ -143,5 +162,4 @@ class SnakeGameAI:
             y += BLOCK_SIZE
         elif self.direction == Direction.UP:
             y -= BLOCK_SIZE
-
         self.head = Point(x, y)
