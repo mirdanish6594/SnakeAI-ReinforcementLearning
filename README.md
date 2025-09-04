@@ -2,14 +2,10 @@
 
 This project features an AI agent that masters the classic Snake game from scratch. Using **Deep Q-Learning**, the agent learns optimal strategies through trial and error, with no hard-coded rules. It evolves from random movements to complex, intelligent behaviors, demonstrating a practical application of modern reinforcement learning techniques.
 
----
 
 ## 🎥 Watch the Agent in Action
-Below is a demonstration of the trained agent. Initially, its movements are random, but over hundreds of games, it develops a sophisticated strategy to maximize its score by actively hunting for food and avoiding collisions.
+[assets/Screenshot 2025-09-04 132621.png]
 
-*(This is a great place to add a GIF of your trained agent playing the game.)*
-
----
 
 ## 🛠️ Core Concepts & Technology
 
