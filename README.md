@@ -4,7 +4,7 @@ This project features an AI agent that masters the classic Snake game from scrat
 
 
 ## 🎥 Watch the Agent in Action
-(./assets/Screenshot 2025-09-04 132621.png)
+![Screenshot](./assets/screenshot.png)
 
 
 ## 🛠️ Core Concepts & Technology
